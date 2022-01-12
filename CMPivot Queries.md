@@ -3,16 +3,16 @@ Registry('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion')
 | summarize count() by Value
 | render piechart with (legend=visible)
 
+Registry('HKLM:\SOFTWARE\Microsoft\Windows Advanced Threat Protection\Status')
+| where Property == 'Onboardingstate'
+| summarize count() by Value
+| render barchart
+
 SystemBootData
 | where Device == 'MyDevice'
 | project SystemStartTime, BootDuration, OSStart=EventLogStart, GPDuration, UpdateDuration
 | order by SystemStartTime desc
 | render barchart with (kind=stacked, title='Boot times for MyDevice', ytitle='Time (ms)')
-
-Registry('HKLM:\SOFTWARE\Microsoft\Windows Advanced Threat Protection\Status')
-| where Property == 'Onboardingstate'
-| summarize count() by Value
-| render barchart
 
 Registry('HKLM:\SOFTWARE\Microsoft\Windows Advanced Threat Protection\Status')
 | where Property == 'Onboardingstate'
@@ -148,6 +148,14 @@ Service
 | join Device
 | project Device, Domain, Name, StartMode, State
 
+Service
+| where (Name == 'DiagTrack')
+| join kind=rightouter Device
+| join kind=fullouter OperatingSystem
+| where StartMode != 'Auto' or isnull(StartMode)
+| where (((Caption != 'Microsoft Windows Server 2012 Standard') and (Caption != 'Microsoft Windows Server 2012 Datacenter')) and (Caption !like 'Microsoft Windows Server 2008%'))
+| project Device, Domain, Caption, Name, StartMode, State
+
 Registry('HKLM:\\\Software\Policies\Microsoft\Windows NT\Printers\PointAndPrint')
 | where Property == 'RestrictDriverInstallationToAdministrators'
 | join kind=rightouter Device
@@ -206,6 +214,17 @@ Registry('HKLM:\SOFTWARE\Microsoft\Windows Advanced Threat Protection\Status')
 | where Caption != 'Microsoft Windows Server 2012 Standard' and Caption != 'Microsoft Windows Server 2012 Datacenter' and Caption !like 'Microsoft Windows Server 2008%'
 | where Onboardingstate == '0' or isnull(Onboardingstate)
 | project Device, Onboardingstate, Domain, Caption, InstallDate, Property, OU=Value
+
+Registry('HKLM:\\SOFTWARE\\Microsoft\\Windows Advanced Threat Protection\\Status')
+| where (Property == 'Onboardingstate')
+| project Device, Onboardingstate = Value
+| join kind=fullouter Device
+| join kind=fullouter OperatingSystem
+| join WinEvent('Microsoft-Windows-SENSE/Operational',1day)
+| join kind=rightouter Device
+| where (((Caption != 'Microsoft Windows Server 2012 Standard') and (Caption != 'Microsoft Windows Server 2012 Datacenter')) and (Caption !like 'Microsoft Windows Server 2008%'))
+| where ((Onboardingstate == '0') or isnull( Onboardingstate ))
+| project Device, Onboardingstate, Domain, Caption, InstallDate, Message, DateTime
 
 OperatingSystem
 | where Caption like 'Microsoft Windows Server 2019%'
