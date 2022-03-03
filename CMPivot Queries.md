@@ -65,6 +65,8 @@ Registry('HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion')
 Registry('HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full')
 | where (Property == 'Release')
 | summarize count() by iif(Value=='528049','.NET Framework 4.8',iif(Value=='461814','.NET Framework 4.7.2',iif(Value=='461310','.NET Framework 4.7.1',iif(Value=='460805','.NET Framework 4.7',iif(Value=='394802','.NET Framework 4.6.2',iif(Value=='379893','.NET Framework 4.5.2','Add more releases to iff'))))))
+| order by iif desc
+| render barchart with (title='.NET Framework Versions',xtitle='Version',ytitle='Device')
 ```
 ```
 ComputerSystem | project Device
