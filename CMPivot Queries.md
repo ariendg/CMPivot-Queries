@@ -69,6 +69,14 @@ Registry('HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full')
 | render barchart with (title='.NET Framework Versions',xtitle='Version',ytitle='Device')
 ```
 ```
+Registry('HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full')
+| join Device
+| join OperatingSystem
+| where (Property == 'Release')
+| project Device, Domain, Caption, Value=iif(Value=='528049','.NET Framework 4.8',iif(Value=='461814','.NET Framework 4.7.2',iif(Value=='461310','.NET Framework 4.7.1',iif(Value=='460805','.NET Framework 4.7',iif(Value=='394802','.NET Framework 4.6.2',iif(Value=='379893','.NET Framework 4.5.2','Add more releases to iff'))))))
+| order by Value asc
+```
+```
 ComputerSystem | project Device
 | join kind=leftouter Registry('HKLM:\\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client')
 | project Device, Property, Value
@@ -283,4 +291,148 @@ QuickFixEngineering
 | where Caption like 'Microsoft Windows Server 2019%'
 | project Device, HotFixID
 | summarize count() by iif(HotFixID=='KB5009557','KB5009557 is installed','Missing')
-| render piechart with (title='Progress HTTP Protocol Stack Remote Code Execution Vulnerability CU WS2019')
+| render piechart with (title='Progress patching HTTP Protocol Stack Remote Code Execution Vulnerability CU WS2019')
+```
+```
+Disk | where (Description == 'Local Fixed Disk')
+| where Name == 'C:'
+| where (FreeSpace <= 10240000000)
+| join Device
+| project Device, Domain, Size, FreeSpace
+| order by FreeSpace asc
+```
+```
+Service
+| where (Name == 'QualysAgent')
+| where (State == 'Stopped')
+| join Device
+| project Device, Domain, Name, StartMode, State
+```
+```
+Service
+| where (Name == 'DiagTrack')
+| join kind=rightouter Device
+| join kind=fullouter OperatingSystem
+| where StartMode != 'Auto' or isnull(StartMode)
+| where (((Caption != 'Microsoft Windows Server 2012 Standard') and (Caption != 'Microsoft Windows Server 2012 Datacenter')) and (Caption !like 'Microsoft Windows Server 2008%'))
+| project Device, Domain, Caption, Name, StartMode, State
+```
+```
+Disk | where (Description == 'Local Fixed Disk')
+| where Name == 'C:'
+| where (FreeSpace <= 10240000000)
+| join Device
+| project Device, Domain, Size, FreeSpace
+| order by FreeSpace asc
+```
+```
+Registry('HKLM:\\SYSTEM\CurrentControlSet\Control\Lsa')
+| where Property == 'RunAsPPL'
+| join kind=fullouter Device
+| join kind=fullouter OperatingSystem
+| where Caption != 'Microsoft Windows Server 2012 Standard' and Caption != 'Microsoft Windows Server 2012 Datacenter' and Caption !like 'Microsoft Windows Server 2008%'
+| project Device, Value
+| summarize count() by iif(Value=='1','Compliant','Non-Compliant still needs attention')
+| render piechart with (title='Progress Mimikatz LSASS Protection configuration')
+```
+```
+Registry('HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full')
+| join Device
+| join OperatingSystem
+| where (Property == 'Release')
+| project Device, Domain, Caption, Value=iif(Value=='528049','.NET Framework 4.8',iif(Value=='461814','.NET Framework 4.7.2',iif(Value=='461310','.NET Framework 4.7.1',iif(Value=='460805','.NET Framework 4.7',iif(Value=='394802','.NET Framework 4.6.2',iif(Value=='379893','.NET Framework 4.5.2','Add more releases to iif'))))))
+| where Value != '.NET Framework 4.8' and Value !like '.NET Framework 4.7%'
+| join Service
+| where Name like 'vstsagent%'
+| order by Value asc
+```
+```
+Registry('HKLM:\Software\Policies\Microsoft\SystemCertificates\AuthRoot')
+| where (Property == 'DisableRootAutoUpdate')
+| join kind=rightouter Device
+| project Device, Domain, Key, Property, Value
+```
+```
+WinEvent('Illumio-VEN-Services-Events/Operational',60d)
+| where ID == 2002
+| join Device
+| join OperatingSystem
+//| where Message contains 'object_limit_hard_limit_reached' 
+| project Device, Domain, Caption, Message, ID, DateTime
+| order by DateTime asc
+```
+```
+File('C:\Packages\Plugins\Microsoft.Azure.Monitor.AzureMonitorWindowsAgent\1.*')
+| join kind=rightouter Device
+| where Manufacturer != 'Microsoft Corporation'
+| join OperatingSystem
+| project Device, FileName, Model, Domain, Caption
+| order by FileName asc
+| where isnull(FileName)
+```
+```
+EventLog('Application',1d)
+| where EventID == 7 and Source == 'AdmPwd' | take 1
+| join Device
+| join OperatingSystem
+| join Registry('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine')
+| where Property == 'Distinguished-Name'
+| project Device, DateTime, Message, Source, EventID, Domain, Caption, Property, OU=Value, Description
+| order by Device asc
+```
+```
+WinEvent('Microsoft-Windows-SENSE/Operational',7d)
+| where ID == 5 | take 1
+| join Device
+| join OperatingSystem
+| join Registry('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine')
+| where Property == 'Distinguished-Name'
+| project Device, DateTime, Message, ID, Domain, Caption, Property, OU=Value, Description
+| order by Device asc
+```
+```
+ComputerSystem | project Device
+| join kind=leftouter Registry('HKLM:\\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client')
+| project Device, Property, Value
+| summarize count() by Property, Value
+```
+```
+Device
+| join kind=leftouter Registry('HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\*\*')
+| where Property == 'Enabled' and Value == '0'
+| project Device, Key, Property, Value
+```
+```
+Device
+| join kind=leftouter Registry('HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\*\*')
+| where Property == 'Enabled' and Value == '0'
+| project Device, Key, Property, Value
+| summarize count() by Key
+```
+```
+FileShare
+| where Type == 0
+| where Path startswith 'C:' and Name != 'print$'
+| order by Path asc
+```
+```
+Registry('HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full')
+| join Device
+| join OperatingSystem
+| where Property == 'Version'
+| project Device, Domain, Caption, Value
+| order by Value asc
+```
+```
+WinEvent('Microsoft-Windows-WindowsUpdateClient/Operational', 1h)
+| take 5
+| join Device
+```
+```
+FileContent('C:\ProgramData\GuestConfig\ext_mgr_logs\gc_ext.log')
+| where Content contains 'Failed to set Http version to 1.1. Error : 12009' | take 1
+| join kind=rightouter Device
+| join OperatingSystem
+| join Registry('HKLM:\SOFTWARE\Policies\Microsoft\Cryptography\Configuration\SSL\00010002')
+| project Device, Domain, OSVersion=Caption, Line, Content, CipherSuites=Value
+| order by OSVersion asc
