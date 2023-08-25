@@ -436,3 +436,30 @@ FileContent('C:\ProgramData\GuestConfig\ext_mgr_logs\gc_ext.log')
 | join Registry('HKLM:\SOFTWARE\Policies\Microsoft\Cryptography\Configuration\SSL\00010002')
 | project Device, Domain, OSVersion=Caption, Line, Content, CipherSuites=Value
 | order by OSVersion asc
+```
+```
+CcmLog('AppEnforce',30d ) | where LogText contains ' App enforcement completed' and LogText contains 'for App DT "VMware Tools Per-System Unattended x64"' | project Device, LogText, Date=substring(tostring(DateTime),0,9)
+| summarize count() by Date
+| render barchart
+```
+```
+FileContent('C:\Windows\Temp\vmware_tools_install.log')
+| where Content contains 'Windows Installer installed the product. Product Name: VMware Tools. Product Version: 12.2.5.21855600. Product Language: 1033. Manufacturer: VMware, Inc.. Installation success or error status: 0.'
+```
+```
+Service
+| where (Name like 'MSSQL%' and Name != 'MSSQL$MICROSOFT##WID') 
+| where (State != 'Running')
+| join Device
+| project Device, Domain, Name, StartMode, State
+```
+```
+Service
+| where (StartMode == 'Auto' and State != 'Running')
+| join Device
+| project Device, Domain, Name, StartMode, State
+| summarize count() by Name
+| order by count_
+```
+```
+File('C:\Program Files\WindowsPowerShell\Modules\Az*\*')
